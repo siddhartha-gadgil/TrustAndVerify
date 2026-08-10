@@ -1,0 +1,10 @@
+name = "TrustAndVerify"
+version = "0.1.0"
+defaultTargets = ["trustandverify"]
+
+[[lean_lib]]
+name = "TrustAndVerify"
+
+[[lean_exe]]
+name = "trustandverify"
+root = "Main"
