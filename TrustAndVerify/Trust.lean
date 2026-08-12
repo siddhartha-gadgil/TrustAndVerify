@@ -46,6 +46,25 @@ def elabTrust : CommandElab := fun stx => match stx with
     elabCommand cmd'
   | _ => throwUnsupportedSyntax
 
+def variableComand (ps : Array (Name × Syntax.Term)) : MetaM (TSyntax `command) := do
+  let vars ← ps.mapM fun (_, stx) => do
+    let ident := mkIdent ``Trusted
+    `(bracketedBinder|[$ident $stx])
+  let cmd ← `(command| variable $vars*)
+  return cmd
+
+syntax (name := useCmd) "use_all" : command
+@[command_elab useCmd]
+def elabUseAll : CommandElab := fun stx => match stx with
+  | `(use_all) => do
+    let cmd ← liftTermElabM do
+      let trusts ← TrustState.getTrusts
+      variableComand trusts
+    liftTermElabM do
+     TryThis.addSuggestion stx cmd
+    elabCommand cmd
+  | _ => throwUnsupportedSyntax
+
 macro "prove"  p:term ":=" pf:term : command => do
     `(command| instance : Trusted $p :=⟨$pf⟩)
 
