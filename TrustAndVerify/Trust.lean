@@ -1,7 +1,7 @@
 import Lean
 import TrustAndVerify.TrustExt
 open Std
-open Lean Elab Term Command Tactic
+open Lean Meta Elab Term Command Tactic
 
 syntax commandSeq := sepBy1IndentSemicolon(command)
 
@@ -30,9 +30,21 @@ variable (P : Prop)
 theorem weHaveP [Trusted P] : P := by grind
 end
 
--- Should also include a variable for the instance if we do not prove. However, we do not want a clash if we implement.
-macro "trust" p:term "as" n:ident : command => do
-    `(command| theorem $n [Trusted $p] : $p := by grind)
+syntax (name := trustCmd) "trust" term "as" ident : command
+
+@[command_elab trustCmd]
+def elabTrust : CommandElab := fun stx => match stx with
+  | `(trust $p:term as $n:ident) => do
+    let trustIdent := mkIdent ``Trusted
+    let cmd ← `(command| theorem $n [$trustIdent $p] : $p := by grind)
+    let cmd' ← `(command| variable [$trustIdent $p])
+    let cmds ← toCommandSeq #[cmd, cmd']
+    liftTermElabM do
+     TryThis.addSuggestion stx cmds
+     TrustState.addTrust n.getId p
+    elabCommand cmd
+    elabCommand cmd'
+  | _ => throwUnsupportedSyntax
 
 macro "prove"  p:term ":=" pf:term : command => do
     `(command| instance : Trusted $p :=⟨$pf⟩)
@@ -68,9 +80,13 @@ def delabDetailed (e: Expr) : MetaM Syntax.Term := withOptions (fun o₁ =>
                     pp.unicode.fun.set o'' true) do
               PrettyPrinter.delab e
 
+variable (P : Prop)
+
 trust P as go
 
 trust (2 + 2 = 4) as obvious
+
+#eval TrustState.viewTrusts
 
 use 2 + 2 = 4
 
@@ -81,12 +97,6 @@ prove 2 + 2 = 4 := by
 
 #check go
 
-/--
-error: failed to synthesize
-  Trusted P
-
-Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.
--/
 #guard_msgs in
 example : P := by
     apply go
@@ -110,8 +120,6 @@ variable [trustP : Trusted P]
 #synth Trusted P
 
 
-open Lean
-
 #check Meta.kabstract
 
 #check Meta.transform
@@ -130,17 +138,15 @@ variable (n: Nat)
 #guard_msgs in
 def n: Nat := 1
 
-def transformDefIOtoId (name newName: Name) : MetaM Syntax.Command := do
+def transformDef (name newName: Name) : MetaM Syntax.Command := do
   -- Create two arbitrary local constants for illustration
-  let sourceTerm := Lean.mkConst ``IO
-  let targetTerm := Lean.mkConst ``Id
 
   let ident := mkIdent name
   let fullName ← resolveGlobalConstNoOverload <| ← `($ident)
   let decl := ← getConstInfo fullName
   let typeExpr := decl.type
-  let valueExpr := decl.value?.getD (Lean.mkConst ``Unit)
-  let m := HashMap.ofList [(sourceTerm, targetTerm)]
+  let .some valueExpr  := decl.value? | throwError "The declaration {name} is not a definition."
+  let m ← TrustState.getTransforms
   let newTypeExpr ← transformTerms' m typeExpr
   let newValueExpr ← transformTerms' m valueExpr
   let newId := mkIdent newName
@@ -149,19 +155,18 @@ def transformDefIOtoId (name newName: Name) : MetaM Syntax.Command := do
   let cmd ← `(command| noncomputable def $newId : $newTypeSyntax := $newValueSyntax)
   return cmd
 
-open Lean Meta Elab Term Command Tactic
 def eg (n: Nat) : IO Nat := do
     return n + 1
 
-syntax (name := transformIOtoId) "abstract" ident "as" ident : command
+syntax (name := mkTransforms) "abstract" ident "as" ident : command
 
-@[command_elab transformIOtoId]
-def elabTransformIOtoId : CommandElab :=
+@[command_elab mkTransforms]
+def elabmkTransforms : CommandElab :=
   fun stx =>
     match stx with
     | `(abstract $name:ident as $newName:ident) => do
         let command ← liftTermElabM  do
-            let cmd ← transformDefIOtoId name.getId newName.getId
+            let cmd ← transformDef name.getId newName.getId
             TryThis.addSuggestion stx cmd
             pure cmd
         elabCommand command
