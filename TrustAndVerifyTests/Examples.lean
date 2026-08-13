@@ -103,13 +103,32 @@ def quadruple (n: Nat) : Nat := Id.run (quadrupleId n)
 theorem quadrupleCorrect (n: Nat): quadruple n = n + n + n + n := by
     grind [dbleTrust]
 
+facade dbleId : Nat → Id Nat
+
+trust ∀n, dbleId n = pure (n + n) as dbleIdTrust
+
+@[grind .]
+def quadrupleId' (n: Nat) : Id Nat := do
+    let x ← dbleId n
+    let y ← dbleId x
+    return y
+
+@[grind .]
+theorem quadrupleId'Correct  (n: Nat): quadrupleId' n = pure (n + n + n + n) := by
+    grind [dbleIdTrust]
+
+@[grind .]
+def quadruple' (n: Nat) : Nat := Id.run (quadrupleId' n)
+
+theorem quadruple'Correct (n: Nat): quadruple' n = n + n + n + n := by
+    grind [dbleIdTrust]
+
 class DoubleClass where
     doubleFn : Nat → Nat
 
 variable [dc : DoubleClass]
 
 def double [dc : DoubleClass](n: Nat) : Nat := dc.doubleFn n
-
 
 
 @[default_instance]
