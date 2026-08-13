@@ -107,14 +107,25 @@ facade dbleId : Nat → Id Nat
 
 trust ∀n, dbleId n = pure (n + n) as dbleIdTrust
 
+trust ∀n, Id.run do (← dbleId n) = n + n as dbleIdTrust'
+
 @[grind .]
 def quadrupleId' (n: Nat) : Id Nat := do
     let x ← dbleId n
     let y ← dbleId x
     return y
 
+#print quadrupleId'
+
+def quardrupleId'' (n: Nat) : Nat :=
+    let x := dbleId n
+    let y := dbleId x
+    y
+
 @[grind .]
 theorem quadrupleId'Correct  (n: Nat): quadrupleId' n = pure (n + n + n + n) := by
+    have h := dbleIdTrust'
+    simp at h
     grind [dbleIdTrust]
 
 @[grind .]
