@@ -103,16 +103,14 @@ def quadruple (n: Nat) : Nat := Id.run (quadrupleId n)
 theorem quadrupleCorrect (n: Nat): quadruple n = n + n + n + n := by
     grind [dbleTrust]
 
-end Examples
-
-end TrustAndVerify
-
 class DoubleClass where
     doubleFn : Nat → Nat
 
 variable [dc : DoubleClass]
 
 def double [dc : DoubleClass](n: Nat) : Nat := dc.doubleFn n
+
+
 
 @[default_instance]
 instance : DoubleClass where
@@ -121,6 +119,8 @@ instance : DoubleClass where
 /-- error: Cannot evaluate, contains free variable `dc` -/
 #guard_msgs in
 #eval double 5
+
+
 
 -- From Gemini
 open Lean Meta Std
