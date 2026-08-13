@@ -1,9 +1,13 @@
 name = "TrustAndVerify"
 version = "0.1.0"
 defaultTargets = ["trustandverify"]
+testDriver = "TrustAndVerifyTests"
 
 [[lean_lib]]
 name = "TrustAndVerify"
+
+[[lean_lib]]
+name = "TrustAndVerifyTests"
 
 [[lean_exe]]
 name = "trustandverify"
