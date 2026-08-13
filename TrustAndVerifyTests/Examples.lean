@@ -150,7 +150,9 @@ instance : DoubleClass where
 #guard_msgs in
 #eval double 5
 
-
+#synth Monad IO
+def IO.flatMap := @bind (m := IO) (inferInstance)
+#check IO.flatMap
 
 -- From Gemini
 open Lean Meta Std
@@ -188,3 +190,68 @@ def transformTermsDemo' : MetaM Unit := do
   IO.println s!"Transformed Pair: {← ppExpr resultExpr}"
 
 #eval transformTermsDemo'
+
+-- from ChatGPT
+
+open Lean Meta
+
+def getExplicitArgs
+    (e : Expr) : MetaM (Expr × Array Expr) :=
+  e.withApp fun fn args => do
+    let info ← getFunInfoNArgs fn args.size
+
+    unless info.paramInfo.size == args.size do
+      throwError "unexpected parameter-information size"
+
+    let mut explicitArgs := #[]
+
+    for i in [:args.size] do
+      let arg := args[i]!
+      let param := info.paramInfo[i]!
+
+      if param.isExplicit then
+        explicitArgs := explicitArgs.push arg
+
+    return (fn, explicitArgs)
+
+def mapExplicitArgsM
+    (e : Expr)
+    (mapArg : Expr → MetaM Expr) :
+    MetaM Expr :=
+  e.withApp fun fn args => do
+    let info ← getFunInfoNArgs fn args.size
+
+    unless info.paramInfo.size == args.size do
+      throwError "unexpected parameter-information size"
+
+    let mut newArgs := #[]
+
+    for i in [:args.size] do
+      let arg := args[i]!
+      let param := info.paramInfo[i]!
+
+      let arg' ←
+        if param.isExplicit && !param.isProp then
+          mapArg arg
+        else
+          pure arg
+
+      newArgs := newArgs.push arg'
+
+    return mkAppN fn newArgs
+
+/-!
+```
+let recInfo ← mkRecursorInfo recursorName
+
+let suppliedArgs : Array (Option Expr) :=
+  args.mapIdx fun i arg =>
+    if i == recInfo.motivePos then
+      none                    -- re-infer changed motive
+    else
+      some transformedOrOriginalArg
+
+let result ← mkAppOptM' recursorFn suppliedArgs
+```
+Ref: https://lean-lang.org/doc/api/Lean/Meta/RecursorInfo.html
+-/
