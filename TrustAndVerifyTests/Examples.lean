@@ -12,7 +12,7 @@ section
 
 variable (P: Prop)
 
-theorem weHaveP [Trusted P] : P := by grind
+theorem weHaveP [Trusted P] : P := by apply Trusted.elim
 end
 
 trust (2 + 2 = 4) as obvious
@@ -41,7 +41,28 @@ example : P := by
 
 end
 
+variable [t :Trusted P]
+
+section
+
+variable [t' : Trusted <| 2 + 3 = 5]
+
+end
+
+@[default_instance]
+instance eqn  : Trusted (2 + 3 = 5) := ⟨rfl⟩
+
+#check eqn
+
+#synth Trusted (2 + 3 = 5)
+
 prove P := sorry
+
+instance (priority := 1000) e : Trusted P := by grind
+
+-- variable [tt :Trusted P]
+
+#synth Trusted P
 
 example : P := by
     apply go
@@ -49,6 +70,9 @@ example : P := by
 variable [trustP : Trusted P]
 
 #synth Trusted P
+
+variable [Trusted P]
+variable [Trusted P]
 
 def eg (n: Nat) : IO Nat := do
     return n + 1
@@ -61,6 +85,24 @@ example (n: Nat) : egAbs (egAbs n) = n + 2 := by
     rfl
 
 
+facade dble : Nat → Nat
+
+trust dble n = n + n as dbleTrust
+
+class DoubleClass where
+    doubleFn : Nat → Nat
+
+variable [dc : DoubleClass]
+
+def double [dc : DoubleClass](n: Nat) : Nat := dc.doubleFn n
+
+@[default_instance]
+instance : DoubleClass where
+    doubleFn := fun n => n + n
+
+/-- error: Cannot evaluate, contains free variable `dc` -/
+#guard_msgs in
+#eval double 5
 
 -- From Gemini
 open Lean Meta Std
