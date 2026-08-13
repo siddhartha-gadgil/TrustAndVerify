@@ -87,7 +87,25 @@ example (n: Nat) : egAbs (egAbs n) = n + 2 := by
 
 facade dble : Nat → Nat
 
-trust dble n = n + n as dbleTrust
+trust ∀n, dble n = n + n as dbleTrust
+
+@[grind .]
+def quadrupleId (n: Nat) : Id Nat := return dble (dble n)
+
+#check dbleTrust
+
+theorem quadrupleIdCorrect  (n: Nat): quadrupleId n = pure (n + n + n + n) := by
+    grind [dbleTrust]
+
+@[grind .]
+def quadruple (n: Nat) : Nat := Id.run (quadrupleId n)
+
+theorem quadrupleCorrect (n: Nat): quadruple n = n + n + n + n := by
+    grind [dbleTrust]
+
+end Examples
+
+end TrustAndVerify
 
 class DoubleClass where
     doubleFn : Nat → Nat
