@@ -3,3 +3,4 @@
 import TrustAndVerify.Basic
 import TrustAndVerify.Trust
 import TrustAndVerify.Doppelganger
+import TrustAndVerify.Pipe

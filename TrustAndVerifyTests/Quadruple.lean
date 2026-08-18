@@ -2,8 +2,11 @@ import TrustAndVerify
 
 namespace TrustAndVerify.Examples
 
+#pipe_python
+
 @[facade double]
-def timesTwo (n : Nat) : Nat := n + n
+def timesTwo (n : Nat) : Nat :=
+    fetch (encode := fun n => s!"print({n})") (decode := fun (s : String) => s.toNat!) n
 
 /-- info: opaque double : Nat → Nat -/
 #guard_msgs in
@@ -11,6 +14,8 @@ def timesTwo (n : Nat) : Nat := n + n
 
 trust ∀ n, double n = n + n
 
+/-- info: #[(trusted_17294129397862412764, ∀ n, double n = n + n)] -/
+#guard_msgs in
 #eval TrustState.viewTrusts
 
 @[abstract_as quadruple]
@@ -26,7 +31,16 @@ fun n => double (double n)
 example (n : Nat) : quadruple n = n + n + n + n := by
   grind
 
-def timesThree (n : Nat) : Nat := n + n + n
+#pipe_python
+
+def timesThree (n : Nat) : Nat := fetch
+    (encode := fun n => s!"print({n} + {n} + {n})")
+    (decode := fun (s : String) => s.toNat!) n
+
+/-- info: 15 -/
+#guard_msgs in
+#eval timesThree 5
+
 
 @[reference_for timesThree, grind .]
 def triple (n : Nat) : Nat := n + n + n
