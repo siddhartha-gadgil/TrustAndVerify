@@ -96,8 +96,13 @@ abstract eg as egAbs
 example (n: Nat) : egAbs (egAbs n) = n + 2 := by
     rfl
 
+def double' (n: Nat) : Nat := n + n
 
-facade dble : Nat → Nat =: double
+facade dble of double'
+
+#check dble
+
+#print dble
 
 trust ∀n, dble n = n + n as dbleTrust
 
@@ -115,7 +120,7 @@ noncomputable def quadruple (n: Nat) : Nat := Id.run (quadrupleId n)
 theorem quadrupleCorrect (n: Nat): quadruple n = n + n + n + n := by
     grind [dbleTrust]
 
-facade dbleId : Nat → Id Nat =: dble
+noncomputable def dbleId : Nat → Id Nat := dble
 
 trust ∀n, dbleId n = pure (n + n) as dbleIdTrust
 
@@ -228,7 +233,7 @@ def transformTermsDemo : MetaM Unit := do
   IO.println s!"Original Pair: {← ppExpr pairExpr}"
 
   -- Transform the expression
-  let resultExpr ← transformTerms m pairExpr
+  let resultExpr ← transformMappedTerms m pairExpr
 
   IO.println s!"Transformed Pair: {← ppExpr resultExpr}"
 
@@ -324,22 +329,9 @@ example : 1/0 = 0 := by rfl
 
 #eval getElem [1, 2, 3] 0 (by get_elem_tactic_extensible)
 
-open Lean Meta Elab Term Command Tactic
-def elabFacadeComplicated : CommandElab := fun stx => match stx with
-  | `(facade $n:ident : $p:term =: _) => do
-    let name := n.getId
-    let classIdent := mkIdent <| name.appendAfter "Wrapper"
-    let fieldIdent := mkIdent <| name.appendAfter "Fn"
-    let classCmd ← `(command| class $classIdent where
-      $fieldIdent:ident : $p)
-    let instId := mkIdent <| name.appendAfter "Instance"
-    let cmd₂ ← `(command| def $n [$instId : $classIdent] : $p := $instId.$fieldIdent)
-    let cmd₃ ← `(command| variable [$classIdent])
-    let cmds ← toCommandSeq #[classCmd, cmd₂, cmd₃]
-    liftTermElabM do
-     TryThis.addSuggestion stx cmds
-     TrustState.addTrust n.getId p
-    elabCommand classCmd
-    elabCommand cmd₂
-    elabCommand cmd₃
-  | _ => throwUnsupportedSyntax
+@[facade trpl]
+def triple (n: Nat) : Nat := n + n + n
+
+#check trpl
+
+#print trpl
