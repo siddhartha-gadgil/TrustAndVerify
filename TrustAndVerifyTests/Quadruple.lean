@@ -33,9 +33,9 @@ def timesTwo (n : Nat) : Nat :=
 /-!
 The `trust` command allows us to trust the proposition that `double n = n + n` for all natural numbers `n`. The general pattern is to introduce a facade and then trust propositions that characterize the behavior of the facade. This allows us to use the facade in proofs without having to provide a proof of the trusted proposition.
 -/
-trust ∀ n, double n = n + n
+trust ∀ n, double n = n + n as dble_eqn
 
-/-- info: #[(trusted_17294129397862412764, ∀ n, double n = n + n)] -/
+/-- info: #[(dble_eqn, ∀ n, double n = n + n)] -/
 #guard_msgs in
 #eval TrustState.viewTrusts
 
@@ -120,5 +120,26 @@ info: TrustAndVerify.Examples.sixfold_eqn [SimplyTrusted (∀ (n : Nat), double 
 -/
 #guard_msgs in
 #check sixfold_eqn
+
+namespace GPT
+
+noncomputable def sixfold (n : Nat) : Nat :=
+  double (triple n)
+
+theorem sixfold_eqn (n : Nat) : sixfold n = 6 * n := by
+  grind [sixfold, triple, dble_eqn]
+
+end GPT
+
+namespace gemini
+
+noncomputable def sixfold (n : Nat) : Nat :=
+  double (triple n)
+
+theorem sixfold_eq (n : Nat) : sixfold n = 6 * n := by
+  unfold sixfold triple
+  grind [dble_eqn]
+
+end gemini
 
 end TrustAndVerify.Examples
