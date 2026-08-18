@@ -4,6 +4,10 @@ import TrustAndVerify.Doppelganger
 
 set_option linter.unusedSectionVars false
 
+/-!
+# Miscellaneous examples and experiments with the Trust and Verify framework.
+-/
+
 namespace TrustAndVerify
 
 namespace Examples
@@ -17,13 +21,19 @@ end
 
 trust (2 + 2 = 4) as obvious
 
+#print obvious
+
 opaque P : Prop
 
 trust P as go
 
 #eval TrustState.viewTrusts
 
-example : 2 + 2 = 4 := obvious
+variable (n : Nat)
+
+theorem two_plus_two : 2 + 2 = 4 := obvious
+
+#print two_plus_two
 
 prove 2 + 2 = 4 := by
     grind
@@ -48,6 +58,8 @@ section
 variable [t' : Trusted <| 2 + 3 = 5]
 
 end
+
+variable [t'' :SimplyTrusted <| 2 + 3 = 5]
 
 @[default_instance]
 instance eqn  : Trusted (2 + 3 = 5) := ⟨rfl⟩
@@ -85,12 +97,12 @@ example (n: Nat) : egAbs (egAbs n) = n + 2 := by
     rfl
 
 
-facade dble : Nat → Nat
+facade dble : Nat → Nat =: double
 
 trust ∀n, dble n = n + n as dbleTrust
 
 @[grind .]
-def quadrupleId (n: Nat) : Id Nat := return dble (dble n)
+noncomputable def quadrupleId (n: Nat) : Id Nat := return dble (dble n)
 
 #check dbleTrust
 
@@ -98,26 +110,26 @@ theorem quadrupleIdCorrect  (n: Nat): quadrupleId n = pure (n + n + n + n) := by
     grind [dbleTrust]
 
 @[grind .]
-def quadruple (n: Nat) : Nat := Id.run (quadrupleId n)
+noncomputable def quadruple (n: Nat) : Nat := Id.run (quadrupleId n)
 
 theorem quadrupleCorrect (n: Nat): quadruple n = n + n + n + n := by
     grind [dbleTrust]
 
-facade dbleId : Nat → Id Nat
+facade dbleId : Nat → Id Nat =: dble
 
 trust ∀n, dbleId n = pure (n + n) as dbleIdTrust
 
 trust ∀n, Id.run do (← dbleId n) = n + n as dbleIdTrust'
 
 @[grind .]
-def quadrupleId' (n: Nat) : Id Nat := do
+noncomputable def quadrupleId' (n: Nat) : Id Nat := do
     let x ← dbleId n
     let y ← dbleId x
     return y
 
 #print quadrupleId'
 
-def quardrupleId'' (n: Nat) : Nat :=
+noncomputable def quardrupleId'' (n: Nat) : Nat :=
     let x := dbleId n
     let y := dbleId x
     y
@@ -129,7 +141,7 @@ theorem quadrupleId'Correct  (n: Nat): quadrupleId' n = pure (n + n + n + n) := 
     grind [dbleIdTrust]
 
 @[grind .]
-def quadruple' (n: Nat) : Nat := Id.run (quadrupleId' n)
+noncomputable def quadruple' (n: Nat) : Nat := Id.run (quadrupleId' n)
 
 theorem quadruple'Correct (n: Nat): quadruple' n = n + n + n + n := by
     grind [dbleIdTrust]
@@ -153,6 +165,54 @@ instance : DoubleClass where
 #synth Monad IO
 def IO.flatMap := @bind (m := IO) (inferInstance)
 #check IO.flatMap
+
+opaque Q : Prop
+
+/--
+error: failed to synthesize 'Inhabited' or 'Nonempty' instance for
+  Q
+
+If this type is defined using the 'structure' or 'inductive' command, you can try adding a 'deriving Nonempty' clause to it.
+-/
+#guard_msgs in
+opaque x : Q
+
+opaque f : Nat → Nat
+#eval f 3 -- 0
+
+noncomputable opaque g : Nat → Nat
+/--
+error: failed to compile definition, consider marking it as 'noncomputable' because it depends on 'g', which is 'noncomputable'
+-/
+#guard_msgs in
+#eval g 3 -- 0
+
+/--
+error: Tactic `rfl` failed: The left-hand side
+  f 3
+is not definitionally equal to the right-hand side
+  0
+
+inst✝⁶ : SimplyTrusted (2 + 2 = 4)
+inst✝⁵ : SimplyTrusted P
+n : Nat
+t : Trusted P
+t'' : SimplyTrusted (2 + 3 = 5)
+trustP inst✝⁴ inst✝³ : Trusted P
+inst✝² : SimplyTrusted (∀ (n : Nat), dble n = n + n)
+inst✝¹ : SimplyTrusted (∀ (n : Nat), dbleId n = pure (n + n))
+inst✝ :
+  SimplyTrusted
+    (∀ (n : Nat),
+      (do
+          let __do_lift ← dbleId n
+          __do_lift = n + n).run)
+dc : DoubleClass
+⊢ f 3 = 0
+-/
+#guard_msgs in
+example : f 3 = 0 := by rfl
+
 
 -- From Gemini
 open Lean Meta Std
@@ -255,3 +315,31 @@ let result ← mkAppOptM' recursorFn suppliedArgs
 ```
 Ref: https://lean-lang.org/doc/api/Lean/Meta/RecursorInfo.html
 -/
+
+example : 1/0 = 0/0 := by rfl
+
+example : 1/0 = 0 := by rfl
+
+#eval [1, 2, 3][0]
+
+#eval getElem [1, 2, 3] 0 (by get_elem_tactic_extensible)
+
+open Lean Meta Elab Term Command Tactic
+def elabFacadeComplicated : CommandElab := fun stx => match stx with
+  | `(facade $n:ident : $p:term =: _) => do
+    let name := n.getId
+    let classIdent := mkIdent <| name.appendAfter "Wrapper"
+    let fieldIdent := mkIdent <| name.appendAfter "Fn"
+    let classCmd ← `(command| class $classIdent where
+      $fieldIdent:ident : $p)
+    let instId := mkIdent <| name.appendAfter "Instance"
+    let cmd₂ ← `(command| def $n [$instId : $classIdent] : $p := $instId.$fieldIdent)
+    let cmd₃ ← `(command| variable [$classIdent])
+    let cmds ← toCommandSeq #[classCmd, cmd₂, cmd₃]
+    liftTermElabM do
+     TryThis.addSuggestion stx cmds
+     TrustState.addTrust n.getId p
+    elabCommand classCmd
+    elabCommand cmd₂
+    elabCommand cmd₃
+  | _ => throwUnsupportedSyntax

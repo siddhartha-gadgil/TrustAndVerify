@@ -43,6 +43,8 @@ This is like Mathlib's `Fact` class and is duplicated to avoid a dependency on M
 class Trusted (P : Prop) where
   trust : P
 
+class SimplyTrusted (P : Prop) extends Trusted P
+
 @[grind .]
 theorem Trusted.elim {P : Prop} [Trusted P] : P := by
   apply Trusted.trust
@@ -56,9 +58,10 @@ syntax (name := trustCmd) "trust" term "as" ident : command
 def elabTrust : CommandElab := fun stx => match stx with
   | `(trust $p:term as $n:ident) => do
     let trustIdent := mkIdent ``Trusted
+    let simplyTrustIdent := mkIdent ``SimplyTrusted
     let trustElimIdent := mkIdent ``Trusted.elim
     let cmd ← `(command| theorem $n [$trustIdent $p] : $p := by apply $trustElimIdent)
-    let cmd' ← `(command| variable [$trustIdent $p])
+    let cmd' ← `(command| variable [$simplyTrustIdent $p])
     let cmds ← toCommandSeq #[cmd, cmd']
     liftTermElabM do
      TryThis.addSuggestion stx cmds
@@ -67,9 +70,9 @@ def elabTrust : CommandElab := fun stx => match stx with
     elabCommand cmd'
   | _ => throwUnsupportedSyntax
 
-def variableComand (ps : Array (Name × Syntax.Term)) : MetaM (TSyntax `command) := do
+def variableCommand (ps : Array (Name × Syntax.Term)) : MetaM (TSyntax `command) := do
   let vars ← ps.mapM fun (_, stx) => do
-    let ident := mkIdent ``Trusted
+    let ident := mkIdent ``SimplyTrusted
     `(bracketedBinder|[$ident $stx])
   let cmd ← `(command| variable $vars*)
   return cmd
@@ -84,33 +87,11 @@ def elabUseAll : CommandElab := fun stx => match stx with
       let trusts ← TrustState.getTrusts
       let trusts := trusts.filter fun (n, _) =>
         !(env.contains n)
-      variableComand trusts
+      variableCommand trusts
     liftTermElabM do
      TryThis.addSuggestion stx cmd
     elabCommand cmd
   | _ => throwUnsupportedSyntax
 
 macro "prove"  p:term ":=" pf:term : command => do
-    `(command| instance (priority := 1000) : Trusted $p :=⟨$pf⟩)
-
-syntax (name := facadeCmd) "facade" ident ":" term : command
-
-@[command_elab facadeCmd]
-def elabFacade : CommandElab := fun stx => match stx with
-  | `(facade $n:ident : $p:term) => do
-    let name := n.getId
-    let classIdent := mkIdent <| name.appendAfter "Wrapper"
-    let fieldIdent := mkIdent <| name.appendAfter "Fn"
-    let classCmd ← `(command| class $classIdent where
-      $fieldIdent:ident : $p)
-    let instId := mkIdent <| name.appendAfter "Instance"
-    let cmd₂ ← `(command| def $n [$instId : $classIdent] : $p := $instId.$fieldIdent)
-    let cmd₃ ← `(command| variable [$classIdent])
-    let cmds ← toCommandSeq #[classCmd, cmd₂, cmd₃]
-    liftTermElabM do
-     TryThis.addSuggestion stx cmds
-     TrustState.addTrust n.getId p
-    elabCommand classCmd
-    elabCommand cmd₂
-    elabCommand cmd₃
-  | _ => throwUnsupportedSyntax
+    `(command| @[default_instance] instance : Trusted $p :=⟨$pf⟩)

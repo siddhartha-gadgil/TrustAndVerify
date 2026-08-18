@@ -50,3 +50,15 @@ def elabmkTransforms : CommandElab :=
             pure cmd
         elabCommand command
     | _ => throwUnsupportedSyntax
+
+syntax (name := facadeCmd) "facade" ident ":"  term "=:" term  : command
+
+@[command_elab facadeCmd]
+def elabFacade : CommandElab := fun stx => match stx with
+  | `(facade $n:ident : $p:term =: $_:term) => do
+    let cmd ← `(command| noncomputable opaque $n:ident : $p)
+    liftTermElabM do
+     TryThis.addSuggestion stx cmd
+     TrustState.addTrust n.getId p
+    elabCommand cmd
+  | _ => throwUnsupportedSyntax
