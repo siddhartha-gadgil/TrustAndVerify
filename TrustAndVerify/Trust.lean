@@ -72,9 +72,9 @@ def elabTrust : CommandElab := fun stx => match stx with
     let cmd' ← `(command| variable [$simplyTrustIdent $p])
     let cmds ← toCommandSeq #[cmd, cmd']
     liftTermElabM do
-     if ← tryThisEnabled then
-      TryThis.addSuggestion stx cmds
       TrustState.addTrust nameId.getId p
+      if ← tryThisEnabled then
+        TryThis.addSuggestion stx cmds
     elabCommand cmd
     elabCommand cmd'
 

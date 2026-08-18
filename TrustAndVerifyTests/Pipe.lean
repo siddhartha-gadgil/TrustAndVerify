@@ -28,11 +28,11 @@ macro (name := pipe) "#pipe" url:str : command => do
   let pipeId := mkIdent ``Pipe
   `(command| instance : $pipeId $jsonId $jsonId := $url)
 
-def runPipe {X Y α β: Type} [pipe: Pipe X Y][Inhabited β] (encode : α → X) (decode : Y → β) (input : α) : β  :=
+def fetch {X Y α β: Type} [pipe: Pipe X Y][Inhabited β] (encode : α → X) (decode : Y → β) (input : α) : β  :=
   let x := encode input
   let y? := unsafe unsafeIO <| pipe.queryResponse x
   match y? with
     | .ok y => decode y
-    | .error e => panic! s!"Error in runPipe: {e}"
+    | .error e => panic! s!"Error in fetch: {e}"
 
 end TrustAndVerify

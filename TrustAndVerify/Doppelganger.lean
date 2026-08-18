@@ -99,10 +99,10 @@ initialize registerBuiltinAttribute {
     TrustState.addNameTransform decl name.getId
 }
 
-syntax (name := abstractAttr) "abstract" ident : attr
+syntax (name := abstractAttr) "abstract_as" ident : attr
 
 def abstractKeyM : Syntax → CoreM Ident
-  | `(attr| abstract $id) => return id
+  | `(attr| abstract_as $id) => return id
   | _ => throwError "invalid abstract attribute"
 
 initialize registerBuiltinAttribute {
@@ -115,4 +115,18 @@ initialize registerBuiltinAttribute {
     liftCommandElabM do
      elabCommand cmd
     TrustState.addNameTransform decl newName
+}
+
+syntax (name := referenceAttr) "reference_for" ident : attr
+
+def referenceKeyM : Syntax → CoreM Ident
+  | `(attr| reference_for $id) => return id
+  | _ => throwError "invalid reference attribute"
+
+initialize registerBuiltinAttribute {
+  name := `referenceAttr
+  descr := "Lean reference attribute"
+  add := fun decl stx kind => MetaM.run' do
+    let name ← referenceKeyM stx
+    TrustState.addNameTransform name.getId decl
 }

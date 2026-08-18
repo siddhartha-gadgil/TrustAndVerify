@@ -5,9 +5,15 @@ namespace TrustAndVerify.Examples
 @[facade double]
 def timesTwo (n : Nat) : Nat := n + n
 
+/-- info: opaque double : Nat → Nat -/
+#guard_msgs in
+#print double
+
 trust ∀ n, double n = n + n
 
-@[abstract quadruple]
+#eval TrustState.viewTrusts
+
+@[abstract_as quadruple]
 def timesFour (n : Nat) : Nat := (timesTwo (timesTwo n))
 
 /--
@@ -18,6 +24,24 @@ fun n => double (double n)
 #print quadruple
 
 example (n : Nat) : quadruple n = n + n + n + n := by
+  grind
+
+def timesThree (n : Nat) : Nat := n + n + n
+
+@[reference_for timesThree, grind .]
+def triple (n : Nat) : Nat := n + n + n
+
+@[abstract_as sixfold]
+def timesSix (n : Nat) : Nat := timesThree (timesTwo n)
+
+/--
+info: def sixfold : Nat → Nat :=
+fun n => triple (double n)
+-/
+#guard_msgs in
+#print sixfold
+
+example (n : Nat) : sixfold n = n + n + n + n + n + n := by
   grind
 
 end TrustAndVerify.Examples
