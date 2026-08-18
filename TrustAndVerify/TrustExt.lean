@@ -54,6 +54,11 @@ def getTrusts : MetaM (Array (Name × Syntax.Term)) := do
   let s ← get
   return s.trusts
 
+def viewTransforms : MetaM (Array (Format × Format)) := do
+  let s ← get
+  s.transforms.toArray.mapM fun (source, target) => do
+    pure (← ppExpr source, ← ppExpr target)
+
 def viewTrusts : MetaM (Array (Name × Format)) := do
   let trusts ← getTrusts
   trusts.mapM fun (name, stx) => do

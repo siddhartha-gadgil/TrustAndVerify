@@ -340,3 +340,9 @@ def triple (n: Nat) : Nat := n + n + n
 def hello : String := "world"
 
 #print hi
+
+#eval TrustState.viewTransforms
+
+def hihi := hello
+
+abstract hihi as hihiAbs

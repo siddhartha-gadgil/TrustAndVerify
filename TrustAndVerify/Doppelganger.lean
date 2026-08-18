@@ -62,20 +62,22 @@ def mkFacadeExpr (name : Ident) (type : Expr) : MetaM (TSyntax `command) := do
   let cmd ← `(command| noncomputable opaque $name:ident : $typeStx)
   return cmd
 
-def mkFacadeStx (name: Ident) (value: Term) : TermElabM (TSyntax `command) := do
+def mkFacadeStx (name: Ident) (value: Ident) : TermElabM (TSyntax `command) := do
   let valueExpr ← elabTerm value none
   let type ← inferType valueExpr
   mkFacadeExpr name type
 
-syntax (name := facadeCmd) "facade" ident "of"  term : command
+syntax (name := facadeCmd) "facade" ident "of"  ident : command
 @[command_elab facadeCmd]
 def elabFacadeOf : CommandElab := fun stx => match stx with
-  | `(facade $n:ident of $p:term) => do
+  | `(facade $n:ident of $p:ident) => do
     let cmd ← liftTermElabM do
       mkFacadeStx n p
     liftTermElabM do
      TryThis.addSuggestion stx cmd
     elabCommand cmd
+    liftTermElabM do
+     TrustState.addNameTransform p.getId n.getId
   | _ => throwUnsupportedSyntax
 
 syntax (name := facadeAttr) "facade" ident : attr
@@ -93,6 +95,7 @@ initialize registerBuiltinAttribute {
     let cmd ← mkFacadeExpr name declTy
     liftCommandElabM do
      elabCommand cmd
+    TrustState.addNameTransform decl name.getId
 }
 
 syntax (name := abstractAttr) "abstract" ident : attr
@@ -106,7 +109,9 @@ initialize registerBuiltinAttribute {
   descr := "Lean abstract attribute"
   add := fun decl stx kind => MetaM.run' do
     let newName ← abstractKeyM stx
-    let cmd ← transformDef decl newName.getId
+    let newName := newName.getId
+    let cmd ← transformDef decl newName
     liftCommandElabM do
      elabCommand cmd
+    TrustState.addNameTransform decl newName
 }
