@@ -94,3 +94,19 @@ initialize registerBuiltinAttribute {
     liftCommandElabM do
      elabCommand cmd
 }
+
+syntax (name := abstractAttr) "abstract" ident : attr
+
+def abstractKeyM : Syntax → CoreM Ident
+  | `(attr| abstract $id) => return id
+  | _ => throwError "invalid abstract attribute"
+
+initialize registerBuiltinAttribute {
+  name := `abstractAttr
+  descr := "Lean abstract attribute"
+  add := fun decl stx kind => MetaM.run' do
+    let newName ← abstractKeyM stx
+    let cmd ← transformDef decl newName.getId
+    liftCommandElabM do
+     elabCommand cmd
+}
