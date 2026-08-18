@@ -30,7 +30,7 @@ def transformDef (name newName: Name) : MetaM Syntax.Command := do
   let newId := mkIdent newName
   let newTypeSyntax ← delabDetailed newTypeExpr
   let newValueSyntax ← delabDetailed newValueExpr
-  let cmd ← `(command| noncomputable def $newId : $newTypeSyntax := $newValueSyntax)
+  let cmd ← `(command| @[grind .] noncomputable def $newId : $newTypeSyntax := $newValueSyntax)
   return cmd
 
 def transformTerms' (transforms: HashMap Expr Expr) (e: Expr) : MetaM Expr := do
@@ -50,7 +50,8 @@ def elabmkTransforms : CommandElab :=
     | `(abstract $name:ident as $newName:ident) => do
         let command ← liftTermElabM  do
             let cmd ← transformDef name.getId newName.getId
-            TryThis.addSuggestion stx cmd
+            if ← tryThisEnabled then
+              TryThis.addSuggestion stx cmd
             pure cmd
         elabCommand command
     | _ => throwUnsupportedSyntax

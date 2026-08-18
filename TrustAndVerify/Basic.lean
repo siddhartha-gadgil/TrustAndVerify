@@ -5,6 +5,14 @@ def hello := "world"
 
 syntax commandSeq := sepBy1IndentSemicolon(command)
 
+register_option trustAndVerify.try_this : Bool := {
+  defValue := false
+  descr := "Suggest a `TryThis`."
+}
+
+def tryThisEnabled : CoreM Bool := do
+  return (← getOptions).getBool `trustAndVerify.try_this
+
 namespace TrustAndVerify
 
 variable [Monad m] [MonadQuotation m]

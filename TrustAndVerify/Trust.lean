@@ -52,23 +52,31 @@ theorem Trusted.elim {P : Prop} [Trusted P] : P := by
 /--
 Trust the proposition `P` and give it a name `n`. This will create a theorem `n` that is an instance of `Trusted P`, and also add a variable `[Trusted P]` to the context.
 -/
-syntax (name := trustCmd) "trust" term "as" ident : command
+syntax (name := trustCmd) "trust" term ("as" ident)? : command
 
 @[command_elab trustCmd]
 def elabTrust : CommandElab := fun stx => match stx with
   | `(trust $p:term as $n:ident) => do
+    let nameId := n
+    go nameId p stx
+  | `(trust $p:term) => do
+    let hash ←  liftTermElabM do pure <| hash (← PrettyPrinter.ppTerm  p).pretty
+    let nameId := mkIdent <| Name.mkSimple <| "trusted_" ++ toString (hash)
+    go nameId p stx
+  | _ => throwUnsupportedSyntax
+  where go (nameId : Ident) (p : Syntax.Term) (stx: Syntax) : CommandElabM Unit := do
     let trustIdent := mkIdent ``Trusted
     let simplyTrustIdent := mkIdent ``SimplyTrusted
     let trustElimIdent := mkIdent ``Trusted.elim
-    let cmd ← `(command| theorem $n [$trustIdent $p] : $p := by apply $trustElimIdent)
+    let cmd ← `(command| @[grind .] theorem $nameId [$trustIdent $p] : $p := by apply $trustElimIdent)
     let cmd' ← `(command| variable [$simplyTrustIdent $p])
     let cmds ← toCommandSeq #[cmd, cmd']
     liftTermElabM do
-     TryThis.addSuggestion stx cmds
-     TrustState.addTrust n.getId p
+     if ← tryThisEnabled then
+      TryThis.addSuggestion stx cmds
+      TrustState.addTrust nameId.getId p
     elabCommand cmd
     elabCommand cmd'
-  | _ => throwUnsupportedSyntax
 
 def variableCommand (ps : Array (Name × Syntax.Term)) : MetaM (TSyntax `command) := do
   let vars ← ps.mapM fun (_, stx) => do
@@ -89,7 +97,8 @@ def elabUseAll : CommandElab := fun stx => match stx with
         !(env.contains n)
       variableCommand trusts
     liftTermElabM do
-     TryThis.addSuggestion stx cmd
+      if ← tryThisEnabled then
+        TryThis.addSuggestion stx cmd
     elabCommand cmd
   | _ => throwUnsupportedSyntax
 
