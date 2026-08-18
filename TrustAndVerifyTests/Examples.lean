@@ -336,7 +336,7 @@ def triple (n: Nat) : Nat := n + n + n
 
 #print trpl
 
-@[abstract hi]
+@[abstract_as hi]
 def hello : String := "world"
 
 #print hi
