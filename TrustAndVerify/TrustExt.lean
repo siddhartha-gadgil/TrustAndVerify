@@ -5,7 +5,7 @@ open Lean Meta Elab Term Std
 namespace TrustAndVerify
 
 structure TrustState where
-  transforms : HashMap Expr Expr := HashMap.ofList [(mkConst ``IO, mkConst ``Id)]
+  transforms : Array (Expr × Expr) := #[(mkConst ``IO, mkConst ``Id)]
   trusts :Array (Name × Syntax.Term) := #[]
   deriving Inhabited
 
@@ -17,7 +17,7 @@ inductive AddToTrustState where
 def TrustState.add (s : TrustState) (e : AddToTrustState) : TrustState :=
   match e with
   | AddToTrustState.addExprs source target =>
-    { s with transforms := s.transforms.insert source target }
+    { s with transforms := s.transforms.push (source, target) }
   | AddToTrustState.addTrust name stx =>
         { s with trusts := s.trusts.push (name, stx) }
 
@@ -46,9 +46,13 @@ def get : MetaM TrustState := do
   let env ← getEnv
   return TrustExt.getState env
 
-def getTransforms : MetaM (HashMap Expr Expr) := do
+def getTransforms : MetaM (Array (Expr × Expr)) := do
   let s ← get
   return s.transforms
+
+def getFlippedTransforms : MetaM (Array (Expr × Expr)) := do
+  let s ← get
+  return s.transforms.map (fun (source, target) => (target, source))
 
 def getTrusts : MetaM (Array (Name × Syntax.Term)) := do
   let s ← get
@@ -56,7 +60,7 @@ def getTrusts : MetaM (Array (Name × Syntax.Term)) := do
 
 def viewTransforms : MetaM (Array (Format × Format)) := do
   let s ← get
-  s.transforms.toArray.mapM fun (source, target) => do
+  s.transforms.mapM fun (source, target) => do
     pure (← ppExpr source, ← ppExpr target)
 
 def viewTrusts : MetaM (Array (Name × Format)) := do

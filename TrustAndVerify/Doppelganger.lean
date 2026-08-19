@@ -7,15 +7,15 @@ open Lean Meta Elab Term Command Tactic
 
 namespace TrustAndVerify
 
-def transformMappedTerms (transforms: HashMap Expr Expr) (e: Expr) : MetaM Expr := do
+def transformMappedTerms (transforms: Array (Expr × Expr)) (e: Expr) : MetaM Expr := do
   Meta.transform e (post := fun subExpr => do
-    match transforms.get? subExpr with
-    | some newExpr => return .done newExpr
+    match transforms.find? (fun (source, _) => source == subExpr) with
+    | some (_, newExpr) => return .done newExpr
     | none => return .continue
   )
 
-def transformTerm (e : Expr) : MetaM Expr := do
-  let m ← TrustState.getTransforms
+def transformTerm (e : Expr) (flip: Bool) : MetaM Expr := do
+  let m ← if flip then TrustState.getFlippedTransforms else TrustState.getTransforms
   transformMappedTerms m e
 
 def transformDef (name newName: Name) : MetaM Syntax.Command := do
@@ -58,7 +58,7 @@ def elabmkTransforms : CommandElab :=
 
 open Lean Meta Elab Term Command Tactic
 def mkFacadeExpr (name : Ident) (type : Expr) : MetaM (TSyntax `command) := do
-  let type ← transformTerm type
+  let type ← transformTerm type false
   let typeStx ← delabDetailed type
   let cmd ← `(command| noncomputable opaque $name:ident : $typeStx)
   return cmd

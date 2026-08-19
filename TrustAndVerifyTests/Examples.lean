@@ -226,7 +226,7 @@ def transformTermsDemo : MetaM Unit := do
   let sourceTerm := Lean.mkNatLit 42
   let targetTerm := Lean.mkStrLit "forty-two" -- Changing type from Nat to String
 
-  let m := HashMap.ofList [(sourceTerm, targetTerm)]
+  let m := #[(sourceTerm, targetTerm)]
 
   -- Target expression: (42, 42)
   let pairExpr ← mkAppM ``Prod.mk #[sourceTerm, sourceTerm]
