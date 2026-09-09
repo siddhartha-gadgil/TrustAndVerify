@@ -10,9 +10,6 @@ A connection to a LeanAide server, which can be used to query for responses.
 class Pipe (X Y : Type) where
   queryResponse : X → IO Y
 
-class LeanAideUrl where
-  url : String
-
 /-- Create a `Pipe` from a URL, using `curl` to send requests. -/
 @[instance_reducible]
 def fromURL (url: String) : Pipe Json Json := {

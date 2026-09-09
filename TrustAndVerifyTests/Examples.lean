@@ -35,8 +35,13 @@ theorem two_plus_two : 2 + 2 = 4 := obvious
 
 #print two_plus_two
 
+#synth Trusted (2 + 2 = 4)
+
+
 prove 2 + 2 = 4 := by
     grind
+
+#synth Trusted (2 + 2 = 4)
 
 #check go
 

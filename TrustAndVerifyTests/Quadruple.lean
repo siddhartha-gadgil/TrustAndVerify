@@ -24,7 +24,9 @@ Double a natural number using an external Python computation. The `timesTwo` fun
 -/
 @[facade double]
 def timesTwo (n : Nat) : Nat :=
-    fetch (encode := fun n => s!"print({n})") (decode := fun (s : String) => s.toNat!) n
+    fetch (encode := fun n => s!"print({n} + {n})") (decode := fun (s : String) => s.toNat!) n
+
+-- #eval timesTwo 5
 
 /-- info: opaque double : Nat → Nat -/
 #guard_msgs in
@@ -39,10 +41,17 @@ trust ∀ n, double n = n + n as dble_eqn
 #guard_msgs in
 #eval TrustState.viewTrusts
 
+/--
+info: theorem TrustAndVerify.Examples.dble_eqn : ∀ [Trusted (∀ (n : Nat), double n = n + n)] (n : Nat), double n = n + n :=
+fun [Trusted (∀ (n : Nat), double n = n + n)] => Trusted.elim
+-/
+#guard_msgs in
+#print dble_eqn
+
 /-!
 ## Doppelgangers and Abstracting Definitions
 
-Our goal is to build verified code that uses the external definitions. The next ingredient is to define a *doppelganger* of a definition that uses the external computation. The doppelganger is a new definition that has the same type as the original definition, but is defined in terms of the trusted proposition. We also make other proof-friendly changes, such as replacing `Float` with `Real`.
+Our goal is to build verified code that uses the external definitions. The next ingredient is to define a *doppelganger* of a definition that uses the external computation. The doppelganger is a new definition that has the type obtained from as the original definition by substitutions, and is defined in terms of the trusted proposition. We also make other proof-friendly changes, such as replacing `Float` with `Real`.
 
 In the following command, the attribute `@[abstract_as quadruple]` adds an additional command that introduces a definition that replaces external computations with their facades/abstractions, and makes other proof-friendly changes.
 -/
